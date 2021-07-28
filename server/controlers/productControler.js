@@ -1,17 +1,28 @@
 const uuid = require('uuid');
 const path = require('path');
-const {Product} = require('../models/models');
+const {Product, ProductInfo} = require('../models/models');
 const ApiError = require('../error/apiError');
 
 class ProductController {
   async create(req, res, next) {
     try {
-      const {title, price, idProduct, info} = req.body;
+      let {title, price, brendId, typeId, info} = req.body;
       const {img} = req.files;
       let fileName = uuid.v4() + '.jpg';
       img.mv(path.resolve(__dirname, '..', 'static', fileName));
-      const product = await Product.create( {title, price, idProduct, img: fileName} );
-      console.log(product);
+
+      const product = await Product.create( {title, price, brendId, typeId, img: fileName} );
+      if(info){
+        info = JSON.parse(info)
+        info.forEach( i =>
+          ProductInfo.create({
+            title: i.title,
+            description: i.description,
+            productId: product.id
+          })
+        )
+      }
+
       return res.json(product);
     } catch (e) {
       next(ApiError.badRequest(e.message))
@@ -19,24 +30,34 @@ class ProductController {
 
   }
   async getAll(req, res) {
-    const {brendId, typeId} = req.query;
+    let {brendId, typeId, limit, page} = req.query;
+    page = page || 1;
+    limit =  limit || 10;
+    let offset = page * limit - limit
     let profucts;
     if (!brendId && !typeId) {
-      profucts = await Product.findAll();
+      profucts = await Product.findAndCountAll({limit, offset});
     }
     if (brendId && !typeId) {
-      profucts = await Product.findAll( {where: {brendId}} );
+      profucts = await Product.findAndCountAll( {where: {brendId}, limit, offset} );
     }
     if (!brendId && typeId) {
-      profucts = await Product.findAll( {where: {typeId}} );
+      profucts = await Product.findAndCountAll( {where: {typeId}, limit, offset} );
     }
     if (brendId && typeId) {
-      profucts = await Product.findAll( {where: {brendId, typeId}} );
+      profucts = await Product.findAndCountAll( {where: {brendId, typeId}, limit, offset} );
     }
     return res.json(profucts)
   }
   async getById(req, res) {
-    res.status(200).json({message:"All WORKING"})
+    const {id} = req.params;
+    const product = await Product.findOne(
+      {
+        where: {id},
+        include: [{model: ProductInfo, as: 'info'}]
+      }
+    )
+    return res.json(product)
   }
 }
 module.exports = new ProductController()
