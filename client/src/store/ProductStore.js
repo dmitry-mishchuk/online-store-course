@@ -28,13 +28,13 @@ export default class ProductStore {
     setProducts(products){
       this._products = products
     }
-    getTypes(){
+    get types(){
       return this._types
     }
-    getBrends(){
+    get brends(){
       return this._brends
     }
-    getProducts(){
+    get products(){
       return this._products
     }
 }
